@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/BosBJJ/volunteer_app/models"
@@ -16,6 +17,8 @@ func OpportunityHandler(w http.ResponseWriter, req *http.Request) {
 		CreateOpportunity(w, req)
 	case http.MethodGet:
 		GetOpportunities(w, req)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -43,10 +46,27 @@ func GetOpportunities(w http.ResponseWriter, req *http.Request) {
 	var futureOpportunities []models.Opportunity
 	now := time.Now()
 	for _, opportunity := range opportunities {
-		if opportunity.Time.After(now) {
+		if opportunity.Date.After(now) {
 			futureOpportunities = append(futureOpportunities, opportunity)
 		}
 	}
 	w.Header().Set("content-type", "application/json")
 	json.NewEncoder(w).Encode(futureOpportunities)
+}
+
+func GetOpportunityByID(w http.ResponseWriter, req *http.Request) {
+	path := req.PathValue("id")
+	reqID, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "invalid input", http.StatusBadRequest)
+		return
+	}
+	for _, opportunity := range opportunities {
+		if opportunity.Id == reqID {
+			w.Header().Set("content-type", "application/json")
+			json.NewEncoder(w).Encode(opportunity)
+			return
+		}
+	}
+	http.Error(w, "opportunity not found", http.StatusNotFound)
 }
