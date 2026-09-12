@@ -17,6 +17,11 @@ func main() {
 	}
 	defer conn.Close(context.Background())
 
+	err = database.CreateSchema(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	http.HandleFunc("/", Welcome)
 	http.HandleFunc("/volunteer", handlers.VolunteerHandler)
 	http.HandleFunc("/volunteer/{id}", handlers.GetVolunteerByID)
