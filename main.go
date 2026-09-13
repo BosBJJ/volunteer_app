@@ -23,8 +23,8 @@ func main() {
 	}
 
 	http.HandleFunc("/", Welcome)
-	http.HandleFunc("/volunteer", handlers.VolunteerHandler)
-	http.HandleFunc("/volunteer/{id}", handlers.GetVolunteerByID)
+	http.HandleFunc("/volunteer", handlers.VolunteerHandler(conn))
+	http.HandleFunc("/volunteer/{id}", handlers.GetVolunteerByID(conn))
 	http.HandleFunc("/opportunity", handlers.OpportunityHandler)
 	http.HandleFunc("/opportunity/{id}", handlers.GetOpportunityByID)
 

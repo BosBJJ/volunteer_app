@@ -2,30 +2,29 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
+	"github.com/BosBJJ/volunteer_app/database"
 	"github.com/BosBJJ/volunteer_app/models"
+	"github.com/jackc/pgx/v5"
 )
 
-var volunteers []models.Volunteer
-
-func VolunteerHandler(w http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case http.MethodPost:
-		CreateVolunteer(w, req)
-	case http.MethodGet:
-		GetVolunteers(w, req)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+func VolunteerHandler(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodPost:
+			CreateVolunteer(conn, w, req)
+		case http.MethodGet:
+			GetVolunteers(conn, w, req)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
 	}
 }
 
-// temporary until SQL implemented
-var nextID int = 0
-
-func CreateVolunteer(w http.ResponseWriter, req *http.Request) {
+func CreateVolunteer(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 	var volunteer models.Volunteer
 	err := json.NewDecoder(req.Body).Decode(&volunteer)
 	if err != nil {
@@ -36,32 +35,43 @@ func CreateVolunteer(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "name and email are required", http.StatusBadRequest)
 		return
 	}
-	volunteer.RegisteredAt = time.Now()
-	volunteer.Id = nextID
-	volunteers = append(volunteers, volunteer)
+	err = database.SaveVolunteer(conn, &volunteer)
+	if err != nil {
+		http.Error(w, "error saving volunteer to database", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("content-type", "application/json")
 	json.NewEncoder(w).Encode(volunteer)
-	nextID++
 }
 
-func GetVolunteers(w http.ResponseWriter, req *http.Request) {
+func GetVolunteers(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	volunteers, err := database.ListVolunteers(conn)
+	if err != nil {
+		http.Error(w, "error fetching volunteers", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("content-type", "application/json")
 	json.NewEncoder(w).Encode(volunteers)
 }
 
-func GetVolunteerByID(w http.ResponseWriter, req *http.Request) {
-	path := req.PathValue("id")
-	reqID, err := strconv.Atoi(path)
-	if err != nil {
-		http.Error(w, "invalid input", http.StatusBadRequest)
-		return
-	}
-	for _, volunteer := range volunteers {
-		if volunteer.Id == reqID {
-			w.Header().Set("content-type", "application/json")
-			json.NewEncoder(w).Encode(volunteer)
+func GetVolunteerByID(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		path := req.PathValue("id")
+		reqID, err := strconv.Atoi(path)
+		if err != nil {
+			http.Error(w, "invalid input", http.StatusBadRequest)
 			return
 		}
+		volunteer, err := database.ListVolunteerByID(conn, reqID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				http.Error(w, "invalid volunteer id", http.StatusNotFound)
+			} else {
+				http.Error(w, "error fetching volunteer", http.StatusInternalServerError)
+			}
+			return
+		}
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(volunteer)
 	}
-	http.Error(w, "volunteer not found", http.StatusNotFound)
 }

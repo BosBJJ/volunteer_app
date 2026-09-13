@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/BosBJJ/volunteer_app/models"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -21,7 +22,7 @@ func CreateSchema(conn *pgx.Conn) error {
 	query := `CREATE TABLE IF NOT EXISTS volunteers (
 	id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 	name TEXT NOT NULL,
-	email TEXT NOT NULL,
+	email TEXT NOT NULL UNIQUE,
 	registered_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`
 
 	_, err := conn.Exec(context.Background(), query)
@@ -42,4 +43,59 @@ func CreateSchema(conn *pgx.Conn) error {
 	}
 
 	return nil
+}
+
+func SaveVolunteer(conn *pgx.Conn, volunteer *models.Volunteer) error {
+	query := `INSERT INTO volunteers (name, email) VALUES ($1, $2) RETURNING id, registered_at`
+
+	row := conn.QueryRow(context.Background(), query, volunteer.Name, volunteer.Email)
+	err := row.Scan(&volunteer.Id, &volunteer.RegisteredAt)
+	if err != nil {
+		return fmt.Errorf("unable to save volunteer to database: %w", err)
+	}
+	return nil
+}
+
+func ListVolunteers(conn *pgx.Conn) ([]models.Volunteer, error) {
+	var volunteers []models.Volunteer
+
+	query := `SELECT * FROM volunteers`
+
+	rows, err := conn.Query(context.Background(), query)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching volunteers: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var volunteer models.Volunteer
+		err = rows.Scan(&volunteer.Id, &volunteer.Name, &volunteer.Email, &volunteer.RegisteredAt)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning volunteer: %w", err)
+		}
+		volunteers = append(volunteers, volunteer)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error reading volunteers: %w", err)
+	}
+
+	return volunteers, nil
+}
+
+func ListVolunteerByID(conn *pgx.Conn, reqID int) (models.Volunteer, error) {
+	var volunteer models.Volunteer
+
+	query := `SELECT * FROM volunteers WHERE id = $1`
+
+	row := conn.QueryRow(context.Background(), query, reqID)
+	err := row.Scan(&volunteer.Id, &volunteer.Name, &volunteer.Email, &volunteer.RegisteredAt)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return models.Volunteer{}, fmt.Errorf("no volunteer with id %d: %w", reqID, err)
+		} else {
+			return models.Volunteer{}, fmt.Errorf("error scanning row: %w", err)
+		}
+	}
+
+	return volunteer, nil
 }
