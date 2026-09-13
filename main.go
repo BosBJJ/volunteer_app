@@ -25,8 +25,8 @@ func main() {
 	http.HandleFunc("/", Welcome)
 	http.HandleFunc("/volunteer", handlers.VolunteerHandler(conn))
 	http.HandleFunc("/volunteer/{id}", handlers.GetVolunteerByID(conn))
-	http.HandleFunc("/opportunity", handlers.OpportunityHandler)
-	http.HandleFunc("/opportunity/{id}", handlers.GetOpportunityByID)
+	http.HandleFunc("/opportunity", handlers.OpportunityHandler(conn))
+	http.HandleFunc("/opportunity/{id}", handlers.GetOpportunityByID(conn))
 
 	fmt.Println("Server started on port 8080")
 

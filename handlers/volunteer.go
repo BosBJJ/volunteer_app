@@ -75,3 +75,4 @@ func GetVolunteerByID(conn *pgx.Conn) http.HandlerFunc {
 		json.NewEncoder(w).Encode(volunteer)
 	}
 }
+
