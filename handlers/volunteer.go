@@ -35,7 +35,7 @@ func CreateVolunteer(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "name and email are required", http.StatusBadRequest)
 		return
 	}
-	err = database.SaveVolunteer(conn, &volunteer)
+	err = database.SaveVolunteer(req.Context(), conn, &volunteer)
 	if err != nil {
 		http.Error(w, "error saving volunteer to database", http.StatusInternalServerError)
 		return
@@ -45,7 +45,7 @@ func CreateVolunteer(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 }
 
 func GetVolunteers(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
-	volunteers, err := database.ListVolunteers(conn)
+	volunteers, err := database.ListVolunteers(req.Context(), conn)
 	if err != nil {
 		http.Error(w, "error fetching volunteers", http.StatusInternalServerError)
 		return
@@ -62,7 +62,7 @@ func GetVolunteerByID(conn *pgx.Conn) http.HandlerFunc {
 			http.Error(w, "invalid input", http.StatusBadRequest)
 			return
 		}
-		volunteer, err := database.ListVolunteerByID(conn, reqID)
+		volunteer, err := database.ListVolunteerByID(req.Context(), conn, reqID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "invalid volunteer id", http.StatusNotFound)
@@ -75,4 +75,3 @@ func GetVolunteerByID(conn *pgx.Conn) http.HandlerFunc {
 		json.NewEncoder(w).Encode(volunteer)
 	}
 }
-

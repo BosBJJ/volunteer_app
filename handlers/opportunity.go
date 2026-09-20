@@ -36,7 +36,7 @@ func CreateOpportunity(conn *pgx.Conn, w http.ResponseWriter, req *http.Request)
 		http.Error(w, "Title, Location and Description are required.", http.StatusBadRequest)
 		return
 	}
-	err = database.SaveOpportunity(conn, &opportunity)
+	err = database.SaveOpportunity(req.Context(), conn, &opportunity)
 	if err != nil {
 		http.Error(w, "error saving opportunity to database", http.StatusInternalServerError)
 	}
@@ -45,7 +45,7 @@ func CreateOpportunity(conn *pgx.Conn, w http.ResponseWriter, req *http.Request)
 }
 
 func GetOpportunities(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
-	opportunities, err := database.ListOpportunities(conn)
+	opportunities, err := database.ListOpportunities(req.Context(), conn)
 	if err != nil {
 		http.Error(w, "error fetching opportunities", http.StatusInternalServerError)
 		return
@@ -69,7 +69,7 @@ func GetOpportunityByID(conn *pgx.Conn) http.HandlerFunc {
 			http.Error(w, "invalid input", http.StatusBadRequest)
 			return
 		}
-		opportunity, err := database.ListOpportunityByID(conn, reqID)
+		opportunity, err := database.ListOpportunityByID(req.Context(), conn, reqID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "invalid opportunity id", http.StatusNotFound)

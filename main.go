@@ -8,16 +8,22 @@ import (
 
 	"github.com/BosBJJ/volunteer_app/database"
 	"github.com/BosBJJ/volunteer_app/handlers"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	conn, err := database.ConnectDB()
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("error loading .env file")
+	}
+	ctx := context.Background()
+	conn, err := database.ConnectDB(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer conn.Close(context.Background())
+	defer conn.Close(ctx)
 
-	err = database.CreateSchema(conn)
+	err = database.CreateSchema(ctx, conn)
 	if err != nil {
 		log.Fatal(err)
 	}
