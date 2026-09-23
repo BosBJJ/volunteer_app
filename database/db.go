@@ -10,7 +10,6 @@ import (
 )
 
 func ConnectDB(ctx context.Context) (*pgx.Conn, error) {
-	fmt.Printf("DATABASE_URL from Go: %q\n", os.Getenv("DATABASE_URL"))
 	conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
@@ -35,6 +34,16 @@ func CreateSchema(ctx context.Context, conn *pgx.Conn) error {
 	description TEXT NOT NULL,
 	location TEXT NOT NULL,
 	date TIMESTAMPTZ NOT NULL);`
+	_, err = conn.Exec(ctx, query)
+	if err != nil {
+		return err
+	}
+	query = `CREATE TABLE IF NOT EXISTS shifts (
+	id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+	capacity int NOT NULL,
+	start_time TIMESTAMPTZ NOT NULL,
+	end_time TIMESTAMPTZ NOT NULL,
+	opportunity_id int REFERENCES opportunities(id));`
 	_, err = conn.Exec(ctx, query)
 	if err != nil {
 		return err
@@ -134,4 +143,58 @@ func ListOpportunityByID(ctx context.Context, conn *pgx.Conn, reqID int) (models
 		}
 	}
 	return opportunity, nil
+}
+
+func SaveShift(ctx context.Context, conn *pgx.Conn, shift *models.Shift) error {
+	query := `INSERT INTO shifts (opportunity_id, capacity, start_time, end_time) VALUES ($1, $2, $3, $4) returning id`
+	row := conn.QueryRow(ctx, query, shift.OpportunityID, shift.Capacity, shift.Start, shift.End)
+	err := row.Scan(&shift.Id)
+	if err != nil {
+		return fmt.Errorf("unable to save shift to database: %w", err)
+	}
+	return nil
+}
+
+func ListShifts(ctx context.Context, conn *pgx.Conn) ([]models.Shift, error) {
+	query := `SELECT * FROM shifts`
+	rows, err := conn.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching shifts: %w", err)
+	}
+	defer rows.Close()
+	shifts := []models.Shift{}
+	for rows.Next() {
+		var shift models.Shift
+		err := rows.Scan(&shift.Id, &shift.Capacity, &shift.Start, &shift.End, &shift.OpportunityID)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning shift: %w", err)
+		}
+		shifts = append(shifts, shift)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error reading shifts: %w", err)
+	}
+	return shifts, nil
+}
+
+func ListShiftsByOpportunity(ctx context.Context, conn *pgx.Conn, opportunityID int) ([]models.Shift, error) {
+	shifts := []models.Shift{}
+	query := `SELECT * FROM shifts WHERE opportunity_id = $1`
+	rows, err := conn.Query(ctx, query, opportunityID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching shifts: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var shift models.Shift
+		err := rows.Scan(&shift.Id, &shift.Capacity, &shift.Start, &shift.End, &shift.OpportunityID)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning shift: %w", err)
+		}
+		shifts = append(shifts, shift)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error reading shifts: %w", err)
+	}
+	return shifts, nil
 }

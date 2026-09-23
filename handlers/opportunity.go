@@ -39,6 +39,7 @@ func CreateOpportunity(conn *pgx.Conn, w http.ResponseWriter, req *http.Request)
 	err = database.SaveOpportunity(req.Context(), conn, &opportunity)
 	if err != nil {
 		http.Error(w, "error saving opportunity to database", http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("content-type", "application/json")
 	json.NewEncoder(w).Encode(opportunity)
