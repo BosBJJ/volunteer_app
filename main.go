@@ -36,6 +36,7 @@ func main() {
 	http.HandleFunc("/opportunity/{id}/shifts", handlers.GetShiftsByOpportunityID(conn))
 	http.HandleFunc("/shifts", handlers.ShiftHandler(conn))
 	http.HandleFunc("/shifts/{id}/signup", handlers.SignupToShift(conn))
+	http.HandleFunc("/shifts/{id}/signups", handlers.CheckSignupsByShift(conn))
 
 	fmt.Println("Server started on port 8080")
 

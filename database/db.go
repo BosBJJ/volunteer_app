@@ -266,24 +266,24 @@ func CountSignups(ctx context.Context, conn *pgx.Conn, shiftID int) (int, error)
 	return res, nil
 }
 
-func ListSignupsByShift(ctx context.Context, conn *pgx.Conn, shiftId int) ([]models.Signup, error) {
-	signups := []models.Signup{}
-	query := `SELECT * FROM shift_signups WHERE shift_id = $1`
+func ListSignupsByShift(ctx context.Context, conn *pgx.Conn, shiftId int) ([]models.Volunteer, error) {
+	volunteers := []models.Volunteer{}
+	query := `SELECT v.id, v.name, v.email, v.registered_at FROM volunteers v JOIN shift_signups s ON v.id = s.volunteer_id WHERE s.shift_id = $1`
 	rows, err := conn.Query(ctx, query, shiftId)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching signups: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var signup models.Signup
-		err = rows.Scan(&signup.Id, &signup.VolunteerID, &signup.ShiftID)
+		var volunteer models.Volunteer
+		err = rows.Scan(&volunteer.Id, &volunteer.Name, &volunteer.Email, &volunteer.RegisteredAt)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning signup: %w", err)
 		}
-		signups = append(signups, signup)
+		volunteers = append(volunteers, volunteer)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error reading signups: %w", err)
 	}
-	return signups, nil
+	return volunteers, nil
 }

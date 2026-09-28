@@ -76,3 +76,24 @@ func SignupToShift(conn *pgx.Conn) http.HandlerFunc {
 		json.NewEncoder(w).Encode(signup)
 	}
 }
+
+func CheckSignupsByShift(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		shiftID, err := strconv.Atoi(req.PathValue("id"))
+		if err != nil {
+			http.Error(w, "invalid shift id", http.StatusBadRequest)
+			return
+		}
+		volunteers, err := database.ListSignupsByShift(req.Context(), conn, shiftID)
+		if err != nil {
+			http.Error(w, "unable to fetch volunteers", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(volunteers)
+	}
+}
