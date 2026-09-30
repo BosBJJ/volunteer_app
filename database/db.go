@@ -2,8 +2,10 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/BosBJJ/volunteer_app/models"
 	"github.com/jackc/pgx/v5"
@@ -52,6 +54,17 @@ func CreateSchema(ctx context.Context, conn *pgx.Conn) error {
 	id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 	volunteer_id INTEGER NOT NULL REFERENCES volunteers(id),
 	shift_id INTEGER NOT NULL REFERENCES shifts(id),
+	UNIQUE (volunteer_id, shift_id));`
+	_, err = conn.Exec(ctx, query)
+	if err != nil {
+		return err
+	}
+	query = `CREATE TABLE IF NOT EXISTS attendance (
+	id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+	shift_id INTEGER NOT NULL REFERENCES shifts(id),
+	volunteer_id INTEGER NOT NULL REFERENCES volunteers(id),
+	check_in TIMESTAMPTZ NOT NULL,
+	check_out TIMESTAMPTZ,
 	UNIQUE (volunteer_id, shift_id));`
 	_, err = conn.Exec(ctx, query)
 	if err != nil {
@@ -286,4 +299,28 @@ func ListSignupsByShift(ctx context.Context, conn *pgx.Conn, shiftId int) ([]mod
 		return nil, fmt.Errorf("error reading signups: %w", err)
 	}
 	return volunteers, nil
+}
+
+func SaveAttendance(ctx context.Context, conn *pgx.Conn, attendance *models.Attendance) error {
+	query := `INSERT INTO attendance (shift_id, volunteer_id, check_in) VALUES ($1, $2, $3) RETURNING id`
+	row := conn.QueryRow(ctx, query, attendance.ShiftID, attendance.VolunteerID, attendance.CheckIn)
+	err := row.Scan(&attendance.Id)
+	if err != nil {
+		return fmt.Errorf("unable to add attendance to database: %w", err)
+	}
+	return nil
+}
+
+var ErrAttendanceNotFound = errors.New("no attendance record found")
+
+func UpdateAttendance(ctx context.Context, conn *pgx.Conn, endTime time.Time, volunteerID, shiftID int) error {
+	query := `UPDATE attendance SET check_out = $1 WHERE volunteer_id = $2 AND shift_id = $3 AND check_out IS NULL`
+	tag, err := conn.Exec(ctx, query, endTime, volunteerID, shiftID)
+	if err != nil {
+		return fmt.Errorf("unable to update attendance in database: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrAttendanceNotFound
+	}
+	return nil
 }
