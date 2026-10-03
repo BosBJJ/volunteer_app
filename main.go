@@ -31,6 +31,7 @@ func main() {
 	http.HandleFunc("/", Welcome)
 	http.HandleFunc("/volunteer", handlers.VolunteerHandler(conn))
 	http.HandleFunc("/volunteer/{id}", handlers.GetVolunteerByID(conn))
+	http.HandleFunc("/volunteer/{id}/attendance", handlers.ShowAttendance(conn))
 	http.HandleFunc("/opportunity", handlers.OpportunityHandler(conn))
 	http.HandleFunc("/opportunity/{id}", handlers.GetOpportunityByID(conn))
 	http.HandleFunc("/opportunity/{id}/shifts", handlers.GetShiftsByOpportunityID(conn))

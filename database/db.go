@@ -324,3 +324,37 @@ func UpdateAttendance(ctx context.Context, conn *pgx.Conn, endTime time.Time, vo
 	}
 	return nil
 }
+
+func GetAttendanceByVolunteerID(ctx context.Context, conn *pgx.Conn, volunteerID int) ([]models.Attendance, error) {
+	attendanceRecords := []models.Attendance{}
+	query := `SELECT id, shift_id, volunteer_id, check_in, check_out FROM attendance WHERE volunteer_id = $1`
+	rows, err := conn.Query(ctx, query, volunteerID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching attendance records: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var currentAttendance models.Attendance
+		err = rows.Scan(&currentAttendance.Id, &currentAttendance.ShiftID, &currentAttendance.VolunteerID, &currentAttendance.CheckIn, &currentAttendance.CheckOut)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning attendance record: %w", err)
+		}
+		attendanceRecords = append(attendanceRecords, currentAttendance)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error reading attendance records: %w", err)
+	}
+	return attendanceRecords, nil
+}
+
+func GetTotalHoursByVolunteerID(ctx context.Context, conn *pgx.Conn, volunteerID int) (float64, error) {
+	var hours float64
+	query := `SELECT COALESCE(SUM(EXTRACT(EPOCH FROM(check_out - check_in)))/ 3600, 0)
+	FROM attendance WHERE volunteer_id = $1 AND check_out IS NOT NULL;`
+	row := conn.QueryRow(ctx, query, volunteerID)
+	err := row.Scan(&hours)
+	if err != nil {
+		return 0, fmt.Errorf("error scanning total hours: %w", err)
+	}
+	return hours, nil
+}

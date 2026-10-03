@@ -75,3 +75,38 @@ func GetVolunteerByID(conn *pgx.Conn) http.HandlerFunc {
 		json.NewEncoder(w).Encode(volunteer)
 	}
 }
+
+func ShowAttendance(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		volunteerID, err := strconv.Atoi(req.PathValue("id"))
+		if err != nil {
+			http.Error(w, "invalid volunteer id", http.StatusBadRequest)
+			return
+		}
+		volExists, err := database.VolunteerExists(req.Context(), conn, volunteerID)
+		if err != nil {
+			http.Error(w, "unable to verify volunteer", http.StatusInternalServerError)
+			return
+		}
+		if !volExists {
+			http.Error(w, "invalid volunteer id", http.StatusBadRequest)
+			return
+		}
+		records, err := database.GetAttendanceByVolunteerID(req.Context(), conn, volunteerID)
+		if err != nil {
+			http.Error(w, "error fetching attendance", http.StatusInternalServerError)
+			return
+		}
+		hours, err := database.GetTotalHoursByVolunteerID(req.Context(), conn, volunteerID)
+		if err != nil {
+			http.Error(w, "error fetching hours", http.StatusInternalServerError)
+			return
+		}
+		resp := models.AttendanceResponse{
+			Records:    records,
+			TotalHours: hours,
+		}
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}
+}

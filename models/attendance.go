@@ -9,3 +9,8 @@ type Attendance struct {
 	CheckIn     time.Time  `json:"check_in"`
 	CheckOut    *time.Time `json:"check_out"`
 }
+
+type AttendanceResponse struct {
+	Records    []Attendance `json:"records"`
+	TotalHours float64      `json:"total_hours"`
+}
