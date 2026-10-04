@@ -87,3 +87,25 @@ func GetShiftsByOpportunityID(conn *pgx.Conn) http.HandlerFunc {
 		json.NewEncoder(w).Encode(shifts)
 	}
 }
+
+func GetShiftByShiftID(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		path := req.PathValue("id")
+		reqID, err := strconv.Atoi(path)
+		if err != nil {
+			http.Error(w, "invalid input", http.StatusBadRequest)
+			return
+		}
+		shift, err := database.ListShiftByShiftId(req.Context(), conn, reqID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				http.Error(w, "invalid shift id", http.StatusNotFound)
+			} else {
+				http.Error(w, "error fetching shift", http.StatusInternalServerError)
+			}
+			return
+		}
+		w.Header().Set("content-type", "application/json")
+		json.NewEncoder(w).Encode(shift)
+	}
+}
