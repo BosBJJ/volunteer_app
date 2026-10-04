@@ -85,7 +85,7 @@ func SaveVolunteer(ctx context.Context, conn *pgx.Conn, volunteer *models.Volunt
 
 func ListVolunteers(ctx context.Context, conn *pgx.Conn) ([]models.Volunteer, error) {
 	volunteers := []models.Volunteer{}
-	query := `SELECT * FROM volunteers`
+	query := `SELECT id, name, email, registered_at FROM volunteers`
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching volunteers: %w", err)
@@ -107,11 +107,11 @@ func ListVolunteers(ctx context.Context, conn *pgx.Conn) ([]models.Volunteer, er
 
 func ListVolunteerByID(ctx context.Context, conn *pgx.Conn, reqID int) (models.Volunteer, error) {
 	volunteer := models.Volunteer{}
-	query := `SELECT * FROM volunteers WHERE id = $1`
+	query := `SELECT id, name, email, registered_at FROM volunteers WHERE id = $1`
 	row := conn.QueryRow(ctx, query, reqID)
 	err := row.Scan(&volunteer.Id, &volunteer.Name, &volunteer.Email, &volunteer.RegisteredAt)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.Volunteer{}, fmt.Errorf("no volunteer with id %d: %w", reqID, err)
 		} else {
 			return models.Volunteer{}, fmt.Errorf("error scanning row: %w", err)
@@ -142,7 +142,7 @@ func SaveOpportunity(ctx context.Context, conn *pgx.Conn, opportunity *models.Op
 }
 
 func ListOpportunities(ctx context.Context, conn *pgx.Conn) ([]models.Opportunity, error) {
-	query := `SELECT * FROM opportunities`
+	query := `SELECT id, title, description, location, date FROM opportunities`
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching opportunities: %w", err)
@@ -165,11 +165,11 @@ func ListOpportunities(ctx context.Context, conn *pgx.Conn) ([]models.Opportunit
 
 func ListOpportunityByID(ctx context.Context, conn *pgx.Conn, reqID int) (models.Opportunity, error) {
 	opportunity := models.Opportunity{}
-	query := `SELECT * FROM opportunities WHERE id = $1`
+	query := `SELECT id, title, description, location, date FROM opportunities WHERE id = $1`
 	row := conn.QueryRow(ctx, query, reqID)
 	err := row.Scan(&opportunity.Id, &opportunity.Title, &opportunity.Description, &opportunity.Location, &opportunity.Date)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.Opportunity{}, fmt.Errorf("no opportunity with id %d: %w", reqID, err)
 		} else {
 			return models.Opportunity{}, fmt.Errorf("error scanning row: %w", err)
@@ -189,7 +189,7 @@ func SaveShift(ctx context.Context, conn *pgx.Conn, shift *models.Shift) error {
 }
 
 func ListShifts(ctx context.Context, conn *pgx.Conn) ([]models.Shift, error) {
-	query := `SELECT * FROM shifts`
+	query := `SELECT id, capacity, start_time, end_time, opportunity_id FROM shifts`
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching shifts: %w", err)
@@ -212,11 +212,11 @@ func ListShifts(ctx context.Context, conn *pgx.Conn) ([]models.Shift, error) {
 
 func ListShiftByShiftId(ctx context.Context, conn *pgx.Conn, shiftId int) (models.Shift, error) {
 	shift := models.Shift{}
-	query := `SELECT id, opportunity_id, capacity, start_time, end_time FROM shifts WHERE id = $1`
+	query := `SELECT id, capacity, start_time, end_time, opportunity_id FROM shifts WHERE id = $1`
 	row := conn.QueryRow(ctx, query, shiftId)
-	err := row.Scan(&shift.Id, &shift.OpportunityID, &shift.Capacity, &shift.Start, &shift.End)
+	err := row.Scan(&shift.Id, &shift.Capacity, &shift.Start, &shift.End, &shift.OpportunityID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.Shift{}, fmt.Errorf("no shift with id %d: %w", shiftId, err)
 		} else {
 			return models.Shift{}, fmt.Errorf("error scanning row: %w", err)
@@ -227,7 +227,7 @@ func ListShiftByShiftId(ctx context.Context, conn *pgx.Conn, shiftId int) (model
 
 func ListShiftsByOpportunity(ctx context.Context, conn *pgx.Conn, opportunityID int) ([]models.Shift, error) {
 	shifts := []models.Shift{}
-	query := `SELECT * FROM shifts WHERE opportunity_id = $1`
+	query := `SELECT id, capacity, start_time, end_time, opportunity_id FROM shifts WHERE opportunity_id = $1`
 	rows, err := conn.Query(ctx, query, opportunityID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching shifts: %w", err)
