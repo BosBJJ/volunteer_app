@@ -29,7 +29,7 @@ func CreateShift(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 	var shift models.Shift
 	err := json.NewDecoder(req.Body).Decode(&shift)
 	if err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 	if shift.OpportunityID <= 0 || shift.Capacity <= 0 || shift.Start.IsZero() || shift.End.IsZero() {
@@ -76,11 +76,7 @@ func GetShiftsByOpportunityID(conn *pgx.Conn) http.HandlerFunc {
 		}
 		shifts, err := database.ListShiftsByOpportunity(req.Context(), conn, reqID)
 		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				http.Error(w, "invalid opportunity id", http.StatusNotFound)
-			} else {
-				http.Error(w, "error fetching shifts", http.StatusInternalServerError)
-			}
+			http.Error(w, "error fetching shifts", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("content-type", "application/json")

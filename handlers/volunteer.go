@@ -89,7 +89,7 @@ func ShowAttendance(conn *pgx.Conn) http.HandlerFunc {
 			return
 		}
 		if !volExists {
-			http.Error(w, "invalid volunteer id", http.StatusBadRequest)
+			http.Error(w, "volunteer not found", http.StatusNotFound)
 			return
 		}
 		records, err := database.GetAttendanceByVolunteerID(req.Context(), conn, volunteerID)
