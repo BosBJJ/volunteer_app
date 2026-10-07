@@ -66,3 +66,17 @@ func VolunteerExists(ctx context.Context, conn *pgx.Conn, volunteerID int) (bool
 	}
 	return res, nil
 }
+
+var ErrVolunteerNotFound = errors.New("volunteer not found")
+
+func DeleteVolunteer(ctx context.Context, conn *pgx.Conn, volunteerID int) error {
+	query := `DELETE FROM volunteers WHERE id = $1`
+	tag, err := conn.Exec(ctx, query, volunteerID)
+	if err != nil {
+		return fmt.Errorf("unable to delete volunteer: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrVolunteerNotFound
+	}
+	return nil
+}

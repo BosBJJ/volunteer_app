@@ -24,6 +24,19 @@ func VolunteerHandler(conn *pgx.Conn) http.HandlerFunc {
 	}
 }
 
+func VolunteerByIDHandler(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			GetVolunteerByID(conn, w, req)
+		case http.MethodDelete:
+			DeleteVolunteerByID(conn, w, req)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	}
+}
+
 func CreateVolunteer(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 	var volunteer models.Volunteer
 	err := json.NewDecoder(req.Body).Decode(&volunteer)
@@ -54,26 +67,24 @@ func GetVolunteers(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(volunteers)
 }
 
-func GetVolunteerByID(conn *pgx.Conn) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		path := req.PathValue("id")
-		reqID, err := strconv.Atoi(path)
-		if err != nil {
-			http.Error(w, "invalid input", http.StatusBadRequest)
-			return
-		}
-		volunteer, err := database.ListVolunteerByID(req.Context(), conn, reqID)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				http.Error(w, "invalid volunteer id", http.StatusNotFound)
-			} else {
-				http.Error(w, "error fetching volunteer", http.StatusInternalServerError)
-			}
-			return
-		}
-		w.Header().Set("content-type", "application/json")
-		json.NewEncoder(w).Encode(volunteer)
+func GetVolunteerByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	path := req.PathValue("id")
+	reqID, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "invalid input", http.StatusBadRequest)
+		return
 	}
+	volunteer, err := database.ListVolunteerByID(req.Context(), conn, reqID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "invalid volunteer id", http.StatusNotFound)
+		} else {
+			http.Error(w, "error fetching volunteer", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	json.NewEncoder(w).Encode(volunteer)
 }
 
 func ShowAttendance(conn *pgx.Conn) http.HandlerFunc {
@@ -109,4 +120,22 @@ func ShowAttendance(conn *pgx.Conn) http.HandlerFunc {
 		w.Header().Set("content-type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	}
+}
+
+func DeleteVolunteerByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	volunteerID, err := strconv.Atoi(req.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid volunteer id", http.StatusBadRequest)
+		return
+	}
+	err = database.DeleteVolunteer(req.Context(), conn, volunteerID)
+	if err != nil {
+		if errors.Is(err, database.ErrVolunteerNotFound) {
+			http.Error(w, "volunteer not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "error deleting volunteer", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -55,3 +55,17 @@ func ListOpportunityByID(ctx context.Context, conn *pgx.Conn, reqID int) (models
 	}
 	return opportunity, nil
 }
+
+var ErrOpportunityNotFound = errors.New("opportunity not found")
+
+func DeleteOpportunity(ctx context.Context, conn *pgx.Conn, opportunityID int) error {
+	query := `DELETE FROM opportunities WHERE id = $1`
+	tag, err := conn.Exec(ctx, query, opportunityID)
+	if err != nil {
+		return fmt.Errorf("unable to delete opportunity: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrOpportunityNotFound
+	}
+	return nil
+}

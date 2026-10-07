@@ -77,3 +77,18 @@ func ListShiftsByOpportunity(ctx context.Context, conn *pgx.Conn, opportunityID 
 	}
 	return shifts, nil
 }
+
+var ErrShiftNotFound = errors.New("shift not found")
+
+func DeleteShift(ctx context.Context, conn *pgx.Conn, shiftID int) error {
+	query := `DELETE FROM shifts WHERE id = $1`
+	tag, err := conn.Exec(ctx, query, shiftID)
+	if err != nil {
+		return fmt.Errorf("error deleting shift: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrShiftNotFound
+	}
+	return nil
+}
+

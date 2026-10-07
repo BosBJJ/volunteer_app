@@ -24,6 +24,18 @@ func ShiftHandler(conn *pgx.Conn) http.HandlerFunc {
 		}
 	}
 }
+func ShiftByIDHandler(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			GetShiftByShiftID(conn, w, req)
+		case http.MethodDelete:
+			DeleteShiftByID(conn, w, req)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	}
+}
 
 func CreateShift(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 	var shift models.Shift
@@ -84,24 +96,40 @@ func GetShiftsByOpportunityID(conn *pgx.Conn) http.HandlerFunc {
 	}
 }
 
-func GetShiftByShiftID(conn *pgx.Conn) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		path := req.PathValue("id")
-		reqID, err := strconv.Atoi(path)
-		if err != nil {
-			http.Error(w, "invalid input", http.StatusBadRequest)
+func GetShiftByShiftID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	path := req.PathValue("id")
+	reqID, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "invalid input", http.StatusBadRequest)
+		return
+	}
+	shift, err := database.ListShiftByShiftId(req.Context(), conn, reqID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "invalid shift id", http.StatusNotFound)
+		} else {
+			http.Error(w, "error fetching shift", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	json.NewEncoder(w).Encode(shift)
+}
+
+func DeleteShiftByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	path := req.PathValue("id")
+	reqID, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "invalid input", http.StatusBadRequest)
+		return
+	}
+	err = database.DeleteShift(req.Context(), conn, reqID)
+	if err != nil {
+		if errors.Is(err, database.ErrShiftNotFound) {
+			http.Error(w, "shift not found", http.StatusNotFound)
 			return
 		}
-		shift, err := database.ListShiftByShiftId(req.Context(), conn, reqID)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				http.Error(w, "invalid shift id", http.StatusNotFound)
-			} else {
-				http.Error(w, "error fetching shift", http.StatusInternalServerError)
-			}
-			return
-		}
-		w.Header().Set("content-type", "application/json")
-		json.NewEncoder(w).Encode(shift)
+		http.Error(w, "error deleting shift", http.StatusInternalServerError)
+		return
 	}
 }

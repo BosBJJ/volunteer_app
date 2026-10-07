@@ -1,9 +1,14 @@
 - [ ] Update/Delete Volunteers
+    - [x] Delete
     - [ ] Email
     - [ ] Name
 - [ ] Update/Delete Opportunities
+    - [x] Delete
  - [ ] Title
  - [ ] Description
  - [ ] Location
 - [ ] Update/Delete Shifts
+    - [x] Delete
     - [ ] Capacity
+- [x] Delete Signups
+    - [x] Delete

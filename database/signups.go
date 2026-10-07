@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/BosBJJ/volunteer_app/models"
@@ -60,4 +61,18 @@ func ListSignupsByShift(ctx context.Context, conn *pgx.Conn, shiftId int) ([]mod
 		return nil, fmt.Errorf("error reading signups: %w", err)
 	}
 	return volunteers, nil
+}
+
+var ErrSignupNotFound = errors.New("signup not found")
+
+func DeleteSignup(ctx context.Context, conn *pgx.Conn, shiftID, volunteerID int) error {
+	query := `DELETE FROM shift_signups WHERE shift_id = $1 AND volunteer_id = $2`
+	tag, err := conn.Exec(ctx, query, shiftID, volunteerID)
+	if err != nil {
+		return fmt.Errorf("unable to delete signup: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrSignupNotFound
+	}
+	return nil
 }

@@ -25,6 +25,19 @@ func OpportunityHandler(conn *pgx.Conn) http.HandlerFunc {
 	}
 }
 
+func OpportunityByIDHandler(conn *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			GetOpportunityByID(conn, w, req)
+		case http.MethodDelete:
+			DeleteOpportunityByID(conn, w, req)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	}
+}
+
 func CreateOpportunity(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 	var opportunity models.Opportunity
 	err := json.NewDecoder(req.Body).Decode(&opportunity)
@@ -62,24 +75,39 @@ func GetOpportunities(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) 
 	json.NewEncoder(w).Encode(futureOpportunities)
 }
 
-func GetOpportunityByID(conn *pgx.Conn) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		path := req.PathValue("id")
-		reqID, err := strconv.Atoi(path)
-		if err != nil {
-			http.Error(w, "invalid input", http.StatusBadRequest)
-			return
-		}
-		opportunity, err := database.ListOpportunityByID(req.Context(), conn, reqID)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				http.Error(w, "invalid opportunity id", http.StatusNotFound)
-			} else {
-				http.Error(w, "error fetching opportunity", http.StatusInternalServerError)
-			}
-			return
-		}
-		w.Header().Set("content-type", "application/json")
-		json.NewEncoder(w).Encode(opportunity)
+func GetOpportunityByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	opportunityID, err := strconv.Atoi(req.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid opportunity id", http.StatusBadRequest)
+		return
 	}
+	opportunity, err := database.ListOpportunityByID(req.Context(), conn, opportunityID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "invalid opportunity id", http.StatusNotFound)
+		} else {
+			http.Error(w, "error fetching opportunity", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	json.NewEncoder(w).Encode(opportunity)
+}
+
+func DeleteOpportunityByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	opportunityID, err := strconv.Atoi(req.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid opportunity id", http.StatusBadRequest)
+		return
+	}
+	err = database.DeleteOpportunity(req.Context(), conn, opportunityID)
+	if err != nil {
+		if errors.Is(err, database.ErrOpportunityNotFound) {
+			http.Error(w, "opportunity not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "error deleting opportunity", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
