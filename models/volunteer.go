@@ -8,3 +8,8 @@ type Volunteer struct {
 	Email        string    `json:"email"`
 	RegisteredAt time.Time `json:"registeredAt"`
 }
+
+type VolunteerUpdate struct {
+	Name  *string `json:"name"`
+	Email *string `json:"email"`
+}

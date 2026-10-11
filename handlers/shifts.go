@@ -31,6 +31,8 @@ func ShiftByIDHandler(conn *pgx.Conn) http.HandlerFunc {
 			GetShiftByShiftID(conn, w, req)
 		case http.MethodDelete:
 			DeleteShiftByID(conn, w, req)
+		case http.MethodPatch:
+			UpdateShiftByID(conn, w, req)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -132,4 +134,39 @@ func DeleteShiftByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "error deleting shift", http.StatusInternalServerError)
 		return
 	}
+}
+
+func UpdateShiftByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	path := req.PathValue("id")
+	shiftID, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "invalid input", http.StatusBadRequest)
+		return
+	}
+	var shift models.ShiftUpdate
+	err = json.NewDecoder(req.Body).Decode(&shift)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if shift.Capacity == nil {
+		http.Error(w, "capacity can't be empty", http.StatusBadRequest)
+		return
+	}
+	err = database.UpdateShift(req.Context(), conn, shiftID, shift)
+	if err != nil {
+		if errors.Is(err, database.ErrShiftNotFound) {
+			http.Error(w, "shift not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "error updating shift", http.StatusInternalServerError)
+		return
+	}
+	updatedShift, err := database.ListShiftByShiftId(req.Context(), conn, shiftID)
+	if err != nil {
+		http.Error(w, "error fetching shift", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	json.NewEncoder(w).Encode(updatedShift)
 }

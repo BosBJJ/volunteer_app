@@ -31,6 +31,8 @@ func VolunteerByIDHandler(conn *pgx.Conn) http.HandlerFunc {
 			GetVolunteerByID(conn, w, req)
 		case http.MethodDelete:
 			DeleteVolunteerByID(conn, w, req)
+		case http.MethodPatch:
+			UpdateVolunteerByID(conn, w, req)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -138,4 +140,33 @@ func DeleteVolunteerByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Reques
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func UpdateVolunteerByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	volunteerID, err := strconv.Atoi(req.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid volunteer id", http.StatusBadRequest)
+		return
+	}
+	var volunteer models.VolunteerUpdate
+	err = json.NewDecoder(req.Body).Decode(&volunteer)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if (volunteer.Name != nil && *volunteer.Name == "") || (volunteer.Email != nil && *volunteer.Email == "") {
+		http.Error(w, "name and email can't be empty", http.StatusBadRequest)
+		return
+	}
+	err = database.EditVolunteer(req.Context(), conn, volunteerID, volunteer)
+	if err != nil {
+		if errors.Is(err, database.ErrVolunteerNotFound) {
+			http.Error(w, "volunteer not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "error updating volunteer", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	json.NewEncoder(w).Encode(volunteer)
 }

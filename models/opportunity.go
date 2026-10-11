@@ -10,3 +10,8 @@ type Opportunity struct {
 	Date        time.Time `json:"date"`
 }
 
+type OpportunityUpdate struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Location    *string `json:"location"`
+}

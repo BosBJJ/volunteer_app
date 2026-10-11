@@ -32,6 +32,8 @@ func OpportunityByIDHandler(conn *pgx.Conn) http.HandlerFunc {
 			GetOpportunityByID(conn, w, req)
 		case http.MethodDelete:
 			DeleteOpportunityByID(conn, w, req)
+		case http.MethodPatch:
+			UpdateOpportunityByID(conn, w, req)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -110,4 +112,35 @@ func DeleteOpportunityByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Requ
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func UpdateOpportunityByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
+	opportunityID, err := strconv.Atoi(req.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid opportunity id", http.StatusBadRequest)
+		return
+	}
+	var opportunity models.OpportunityUpdate
+	err = json.NewDecoder(req.Body).Decode(&opportunity)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if (opportunity.Title != nil && *opportunity.Title == "") ||
+		(opportunity.Description != nil && *opportunity.Description == "") ||
+		(opportunity.Location != nil && *opportunity.Location == "") {
+		http.Error(w, "title, description, and location can't be empty", http.StatusBadRequest)
+		return
+	}
+	err = database.UpdateOpportunity(req.Context(), conn, opportunityID, opportunity)
+	if err != nil {
+		if errors.Is(err, database.ErrOpportunityNotFound) {
+			http.Error(w, "opportunity not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "unable to update opportunity", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	json.NewEncoder(w).Encode(opportunity)
 }

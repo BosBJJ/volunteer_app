@@ -20,7 +20,7 @@ func SaveOpportunity(ctx context.Context, conn *pgx.Conn, opportunity *models.Op
 }
 
 func ListOpportunities(ctx context.Context, conn *pgx.Conn) ([]models.Opportunity, error) {
-	query := `SELECT id, title, description, location, date FROM opportunities`
+	query := `SELECT id, title, description, location, date FROM opportunities ORDER BY date ASC`
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching opportunities: %w", err)
@@ -63,6 +63,22 @@ func DeleteOpportunity(ctx context.Context, conn *pgx.Conn, opportunityID int) e
 	tag, err := conn.Exec(ctx, query, opportunityID)
 	if err != nil {
 		return fmt.Errorf("unable to delete opportunity: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrOpportunityNotFound
+	}
+	return nil
+}
+
+func UpdateOpportunity(ctx context.Context, conn *pgx.Conn, opportunityID int, opportunity models.OpportunityUpdate) error {
+	query := `UPDATE opportunities
+		SET title = COALESCE($1, title),
+			description = COALESCE($2, description),
+			location = COALESCE($3, location)
+		WHERE id = $4`
+	tag, err := conn.Exec(ctx, query, opportunity.Title, opportunity.Description, opportunity.Location, opportunityID)
+	if err != nil {
+		return fmt.Errorf("unable to update opportunity: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrOpportunityNotFound

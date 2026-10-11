@@ -21,7 +21,7 @@ func SaveVolunteer(ctx context.Context, conn *pgx.Conn, volunteer *models.Volunt
 
 func ListVolunteers(ctx context.Context, conn *pgx.Conn) ([]models.Volunteer, error) {
 	volunteers := []models.Volunteer{}
-	query := `SELECT id, name, email, registered_at FROM volunteers`
+	query := `SELECT id, name, email, registered_at FROM volunteers ORDER BY id ASC`
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching volunteers: %w", err)
@@ -74,6 +74,21 @@ func DeleteVolunteer(ctx context.Context, conn *pgx.Conn, volunteerID int) error
 	tag, err := conn.Exec(ctx, query, volunteerID)
 	if err != nil {
 		return fmt.Errorf("unable to delete volunteer: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrVolunteerNotFound
+	}
+	return nil
+}
+
+func EditVolunteer(ctx context.Context, conn *pgx.Conn, volunteerID int, volStruct models.VolunteerUpdate) error {
+	query := `UPDATE volunteers
+	SET name = COALESCE($1, name),
+		email = COALESCE($2, email)
+	WHERE id = $3`
+	tag, err := conn.Exec(ctx, query, volStruct.Name, volStruct.Email, volunteerID)
+	if err != nil {
+		return fmt.Errorf("unable to update volunteer: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrVolunteerNotFound

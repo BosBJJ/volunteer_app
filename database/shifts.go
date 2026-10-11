@@ -20,7 +20,7 @@ func SaveShift(ctx context.Context, conn *pgx.Conn, shift *models.Shift) error {
 }
 
 func ListShifts(ctx context.Context, conn *pgx.Conn) ([]models.Shift, error) {
-	query := `SELECT id, capacity, start_time, end_time, opportunity_id FROM shifts`
+	query := `SELECT id, capacity, start_time, end_time, opportunity_id FROM shifts ORDER BY start_time ASC`
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching shifts: %w", err)
@@ -92,3 +92,14 @@ func DeleteShift(ctx context.Context, conn *pgx.Conn, shiftID int) error {
 	return nil
 }
 
+func UpdateShift(ctx context.Context, conn *pgx.Conn, shiftID int, shift models.ShiftUpdate) error {
+	query := `UPDATE shifts SET capacity = COALESCE($1, capacity) WHERE id = $2`
+	tag, err := conn.Exec(ctx, query, shift.Capacity, shiftID)
+	if err != nil {
+		return fmt.Errorf("error updating shift: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrShiftNotFound
+	}
+	return nil
+}
