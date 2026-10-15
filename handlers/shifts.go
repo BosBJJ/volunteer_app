@@ -153,6 +153,10 @@ func UpdateShiftByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "capacity can't be empty", http.StatusBadRequest)
 		return
 	}
+	if *shift.Capacity <= 0 {
+		http.Error(w, "capacity must be greater than 0", http.StatusBadRequest)
+		return
+	}
 	err = database.UpdateShift(req.Context(), conn, shiftID, shift)
 	if err != nil {
 		if errors.Is(err, database.ErrShiftNotFound) {
@@ -164,7 +168,7 @@ func UpdateShiftByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Request) {
 	}
 	updatedShift, err := database.ListShiftByShiftId(req.Context(), conn, shiftID)
 	if err != nil {
-		http.Error(w, "error fetching shift", http.StatusInternalServerError)
+		http.Error(w, "error fetching updated shift", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("content-type", "application/json")

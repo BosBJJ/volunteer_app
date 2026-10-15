@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/BosBJJ/volunteer_app/database"
 	"github.com/BosBJJ/volunteer_app/models"
@@ -154,6 +155,16 @@ func UpdateVolunteerByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Reques
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+	if volunteer.Name == nil && volunteer.Email == nil {
+		http.Error(w, "at least one field must be provided", http.StatusBadRequest)
+		return
+	}
+	if volunteer.Name != nil {
+		*volunteer.Name = strings.TrimSpace(*volunteer.Name)
+	}
+	if volunteer.Email != nil {
+		*volunteer.Email = strings.TrimSpace(*volunteer.Email)
+	}
 	if (volunteer.Name != nil && *volunteer.Name == "") || (volunteer.Email != nil && *volunteer.Email == "") {
 		http.Error(w, "name and email can't be empty", http.StatusBadRequest)
 		return
@@ -167,6 +178,11 @@ func UpdateVolunteerByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Reques
 		http.Error(w, "error updating volunteer", http.StatusInternalServerError)
 		return
 	}
+	updatedVolunteer, err := database.ListVolunteerByID(req.Context(), conn, volunteerID)
+	if err != nil {
+		http.Error(w, "error fetching updated  volunteer", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("content-type", "application/json")
-	json.NewEncoder(w).Encode(volunteer)
+	json.NewEncoder(w).Encode(updatedVolunteer)
 }

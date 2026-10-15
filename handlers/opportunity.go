@@ -48,7 +48,7 @@ func CreateOpportunity(conn *pgx.Conn, w http.ResponseWriter, req *http.Request)
 		return
 	}
 	if opportunity.Title == "" || opportunity.Location == "" || opportunity.Description == "" {
-		http.Error(w, "Title, Location and Description are required.", http.StatusBadRequest)
+		http.Error(w, "title, location and description are required.", http.StatusBadRequest)
 		return
 	}
 	err = database.SaveOpportunity(req.Context(), conn, &opportunity)
@@ -126,10 +126,14 @@ func UpdateOpportunityByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Requ
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+	if opportunity.Title == nil && opportunity.Description == nil && opportunity.Location == nil {
+		http.Error(w, "at least one field must be provided", http.StatusBadRequest)
+		return
+	}
 	if (opportunity.Title != nil && *opportunity.Title == "") ||
 		(opportunity.Description != nil && *opportunity.Description == "") ||
 		(opportunity.Location != nil && *opportunity.Location == "") {
-		http.Error(w, "title, description, and location can't be empty", http.StatusBadRequest)
+		http.Error(w, "provided fields cannot be empty", http.StatusBadRequest)
 		return
 	}
 	err = database.UpdateOpportunity(req.Context(), conn, opportunityID, opportunity)
@@ -141,6 +145,11 @@ func UpdateOpportunityByID(conn *pgx.Conn, w http.ResponseWriter, req *http.Requ
 		http.Error(w, "unable to update opportunity", http.StatusInternalServerError)
 		return
 	}
+	updatedOpportunity, err := database.ListOpportunityByID(req.Context(), conn, opportunityID)
+	if err != nil {
+		http.Error(w, "unable to fetch updated opportunity", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("content-type", "application/json")
-	json.NewEncoder(w).Encode(opportunity)
+	json.NewEncoder(w).Encode(updatedOpportunity)
 }
